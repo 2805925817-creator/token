@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token用量查询 </title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 32px;
+            transition: transform 0.2s;
+        }
+        h1 {
+            font-size: 28px;
+            margin: 0 0 8px 0;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sub {
+            color: #666;
+            margin-bottom: 28px;
+            font-size: 14px;
+            border-left: 3px solid #764ba2;
+            padding-left: 12px;
+        }
+        label {
+            font-weight: 600;
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 14px;
+            font-family: monospace;
+            transition: 0.2s;
+        }
+        input:focus {
+            border-color: #764ba2;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(118,75,162,0.1);
+        }
+        button {
+            width: 100%;
+            background: #764ba2;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #5a3a7a;
+            transform: scale(1.01);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .result-box {
+            margin-top: 28px;
+            background: #f8f9ff;
+            border-radius: 20px;
+            padding: 20px;
+            display: none;
+        }
+        .result-box.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .stat:last-child {
+            border-bottom: none;
+        }
+        .stat-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .stat-value {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #212529;
+        }
+        .badge {
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: normal;
+            margin-left: 8px;
+        }
+        .error {
+            color: #dc3545;
+            background: #ffe6e6;
+            border-left: 4px solid #dc3545;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        footer {
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 24px;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🔑 Token 用量查询</h1>
+    <div class="sub">输入  API Key 实时查看剩余 & 已使用Token</div>
+
+    <label for="apiKey">API Key (Bearer Token)</label>
+    <input type="password" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="">
+
+    <button id="queryBtn">✨ 查询用量</button>
+
+    <div id="resultArea" class="result-box"></div>
+    
+</div>
+
+<script>
+    const queryBtn = document.getElementById('queryBtn');
+    const apiKeyInput = document.getElementById('apiKey');
+    const resultArea = document.getElementById('resultArea');
+
+    // 显示结果（支持HTML或纯文本错误）
+    function showResult(content, isError = false) {
+        resultArea.classList.add('show');
+        resultArea.innerHTML = content;
+        if (isError) {
+            resultArea.classList.add('error');
+        } else {
+            resultArea.classList.remove('error');
+        }
+    }
+
+    // 清除结果内容
+    function clearResult() {
+        resultArea.classList.remove('show');
+        resultArea.innerHTML = '';
+    }
+
+    // 渲染用量数据（适配你提供的返回结构）
+    function renderUsage(data) {
+        // 根据你的curl返回: {"code":true,"data":{ ... },"message":"ok"}
+        if (data.code !== true) {
+            throw new Error(data.message || 'API 返回错误状态');
+        }
+
+        const usage = data.data;
+        // 关键字段：
+        // total_used         : 已使用的token数
+        // total_available    : 剩余可用token（可能为负数，表示超额）
+        // total_granted      : 授予总量
+        // unlimited_quota    : 是否无限配额
+        const used = usage.total_used;
+        let remaining = usage.total_available;
+        const unlimited = usage.unlimited_quota;
+        const granted = usage.total_granted;
+
+        // 格式化数字（带千分位）
+        const formatNum = (num) => Number(num).toLocaleString();
+
+        // 处理剩余显示逻辑：如果unlimited_quota为true 且 remaining为负，显示“无限 (可超额)”
+        let remainingDisplay = '';
+        if (unlimited && remaining < 0) {
+            remainingDisplay = `♾️ 无限 (当前可用 ${formatNum(remaining)}，已超额使用)`;
+        } else if (unlimited) {
+            remainingDisplay = `♾️ 无限 (剩余 ${formatNum(remaining)})`;
+        } else {
+            remainingDisplay = formatNum(remaining);
+        }
+
+        // 附加额外信息（展示模型限制等，可选）
+        let extraHtml = '';
+        if (usage.model_limits_enabled && Object.keys(usage.model_limits).length) {
+            extraHtml = `<div class="stat"><span class="stat-label">📌 模型限制</span><span class="stat-value">${JSON.stringify(usage.model_limits)}</span></div>`;
+        }
+
+        const html = `
+            <div class="stat">
+                <span class="stat-label">📈 已使用 Token</span>
+                <span class="stat-value">${formatNum(used)}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">🎫 剩余可用 Token</span>
+                <span class="stat-value">${remainingDisplay}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">🏷️ 授予总量</span>
+                <span class="stat-value">${formatNum(granted)}</span>
+            </div>
+            <div class="stat">
+                <span class="stat-label">⚡ 无限配额</span>
+                <span class="stat-value">${unlimited ? '是 ✅' : '否 ❌'}</span>
+            </div>
+            ${extraHtml}
+            <div class="stat">
+                <span class="stat-label">⏱️ 过期时间</span>
+                <span class="stat-value">${usage.expires_at === 0 ? '永不过期' : new Date(usage.expires_at * 1000).toLocaleString()}</span>
+            </div>
+        `;
+        return html;
+    }
+
+    queryBtn.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+            showResult('❌ 请输入你的 API Key', true);
+            return;
+        }
+
+        // 按钮加载状态
+        const originalText = queryBtn.innerHTML;
+        queryBtn.disabled = true;
+        queryBtn.innerHTML = '<span class="loading-spinner"></span> 查询中...';
+
+        try {
+            // 直接请求API（注意：如果遇到CORS错误，请看下文解决方案）
+            const response = await fetch('https://tdyun.ai/api/usage/token/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                let errorMsg = `HTTP ${response.status}`;
+                try {
+                    const errorJson = await response.json();
+                    errorMsg = errorJson.message || errorJson.error || errorMsg;
+                } catch (e) {}
+                throw new Error(errorMsg);
+            }
+
+            const json = await response.json();
+            console.log('API返回原始数据:', json);  // 方便调试
+
+            // 检查业务code
+            if (json.code !== true) {
+                throw new Error(json.message || '业务错误，请检查Key或权限');
+            }
+
+            const displayHtml = renderUsage(json);
+            showResult(displayHtml, false);
+
+        } catch (error) {
+            console.error('查询异常:', error);
+            let userMsg = error.message;
+            // 针对常见的跨域错误给出友好提示
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                userMsg = '网络请求失败，可能是CORS跨域限制。请参考下方解决方案使用代理。';
+            }
+            showResult(`❌ 查询失败：${userMsg}`, true);
+        } finally {
+            queryBtn.disabled = false;
+            queryBtn.innerHTML = originalText;
+        }
+    });
+</script>
+</body>
+</html>
