@@ -3,304 +3,568 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token用量查询 </title>
+    <title>Token 用量查询</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
         .card {
             background: white;
             border-radius: 24px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
             width: 100%;
-            max-width: 500px;
+            max-width: 960px;
             padding: 32px;
-            transition: transform 0.2s;
         }
-        h1 {
-            font-size: 28px;
-            margin: 0 0 8px 0;
-            color: #1a1a2e;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        h1 { font-size: 28px; margin: 0 0 8px 0; color: #1a1a2e; }
         .sub {
-            color: #666;
-            margin-bottom: 28px;
-            font-size: 14px;
-            border-left: 3px solid #764ba2;
-            padding-left: 12px;
+            color: #666; margin-bottom: 28px; font-size: 14px;
+            border-left: 3px solid #764ba2; padding-left: 12px;
         }
-        label {
-            font-weight: 600;
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-        }
+        label { font-weight: 600; display: block; margin-bottom: 8px; color: #333; }
         input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 16px;
-            font-size: 14px;
-            font-family: monospace;
+            width: 100%; padding: 14px 16px; border: 2px solid #e0e0e0;
+            border-radius: 16px; font-size: 14px; font-family: monospace;
             transition: 0.2s;
         }
-        input:focus {
-            border-color: #764ba2;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(118,75,162,0.1);
-        }
+        input:focus { border-color: #764ba2; outline: none; box-shadow: 0 0 0 3px rgba(118,75,162,0.1); }
         button {
-            width: 100%;
-            background: #764ba2;
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 40px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-            transition: 0.2s;
+            background: #764ba2; color: white; border: none; padding: 14px 24px;
+            border-radius: 40px; font-size: 16px; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
         }
-        button:hover {
-            background: #5a3a7a;
-            transform: scale(1.01);
+        button:hover:not(:disabled) { background: #5a3a7a; transform: scale(1.01); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        button.ghost {
+            background: white; color: #764ba2; border: 2px solid #d9cfe8;
+            font-size: 14px; padding: 10px 18px; font-weight: 600;
         }
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        button.ghost:hover:not(:disabled) { background: #f6f2fb; color: #5a3a7a; }
+        .row { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; align-items: center; }
+        .row input { flex: 1 1 320px; }
+
+        .block { margin-top: 28px; }
+        .block-title {
+            font-size: 16px; font-weight: 700; color: #1a1a2e;
+            margin: 0 0 4px 0; display: flex; align-items: center; gap: 8px;
         }
-        .result-box {
-            margin-top: 28px;
-            background: #f8f9ff;
-            border-radius: 20px;
-            padding: 20px;
-            display: none;
-        }
-        .result-box.show {
-            display: block;
-            animation: fadeIn 0.3s;
-        }
+        .block-note { font-size: 12px; color: #8a8a9a; margin: 0 0 16px 0; line-height: 1.6; }
+
+        .stat-list { background: #f8f9ff; border-radius: 20px; padding: 8px 20px; }
         .stat {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #e9ecef;
+            display: flex; justify-content: space-between; gap: 12px;
+            padding: 12px 0; border-bottom: 1px solid #e9ecef;
         }
-        .stat:last-child {
-            border-bottom: none;
+        .stat:last-child { border-bottom: none; }
+        .stat-label { font-weight: 600; color: #495057; font-size: 14px; }
+        .stat-value { font-family: monospace; font-size: 16px; font-weight: bold; color: #212529; text-align: right; }
+
+        .metrics {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px; margin-bottom: 16px;
         }
-        .stat-label {
-            font-weight: 600;
-            color: #495057;
+        .metric {
+            background: #f8f9ff; border-radius: 16px; padding: 14px 16px;
+            border-left: 4px solid #764ba2;
         }
-        .stat-value {
-            font-family: monospace;
-            font-size: 18px;
-            font-weight: bold;
-            color: #212529;
-        }
-        .badge {
-            background: #e9ecef;
-            padding: 2px 8px;
-            border-radius: 40px;
-            font-size: 12px;
-            font-weight: normal;
-            margin-left: 8px;
-        }
-        .error {
-            color: #dc3545;
-            background: #ffe6e6;
-            border-left: 4px solid #dc3545;
-        }
+        .metric .k { font-size: 12px; color: #666; margin-bottom: 6px; }
+        .metric .v { font-size: 20px; font-weight: bold; font-family: monospace; color: #1a1a2e; word-break: break-all; }
+        .metric.m-blue { border-left-color: #667eea; }
+        .metric.m-green { border-left-color: #1f9d63; }
+        .metric.m-amber { border-left-color: #e8940f; }
+        .metric.m-pink { border-left-color: #d4537e; }
+        .metric.m-gray { border-left-color: #98a2b3; }
+
+        .bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: #eef0f5; margin-bottom: 10px; }
+        .bar > div { height: 100%; transition: width 0.4s; }
+        .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #555; margin-bottom: 8px; }
+        .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 9px 8px; text-align: right; border-bottom: 1px solid #eef0f5; white-space: nowrap; }
+        th { color: #666; font-weight: 600; font-size: 12px; background: #f8f9ff; }
+        th:first-child, td:first-child { text-align: left; font-family: monospace; }
+        tbody tr:hover { background: #fbfaff; }
+        .table-wrap { overflow-x: auto; border-radius: 14px; }
+        .num { font-family: monospace; }
+        .tag { display: inline-block; padding: 1px 7px; border-radius: 20px; font-size: 11px; background: #eef0f5; color: #666; }
+        .tag.good { background: #e3f6ec; color: #17724a; }
+        .tag.warn { background: #fdf1dd; color: #96620a; }
+        .tag.bad { background: #fde8e8; color: #a32d2d; }
+
+        .error { color: #dc3545; background: #ffe6e6; border-left: 4px solid #dc3545;
+                 border-radius: 12px; padding: 14px 16px; font-size: 14px; }
         .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.6s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
+            display: inline-block; width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top-color: white; animation: spin 0.6s linear infinite;
+            margin-right: 8px; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        footer {
-            text-align: center;
-            font-size: 12px;
-            color: #aaa;
-            margin-top: 24px;
+        footer { text-align: center; font-size: 12px; color: #aaa; margin-top: 24px; line-height: 1.7; }
+        details summary { cursor: pointer; font-size: 14px; font-weight: 600; color: #495057; padding: 8px 0; }
+        @media (max-width: 600px) {
+            .card { padding: 20px; border-radius: 18px; }
+            h1 { font-size: 22px; }
+            .stat-value, .metric .v { font-size: 15px; }
         }
     </style>
 </head>
 <body>
 <div class="card">
     <h1>🔑 Token 用量查询</h1>
-    <div class="sub">输入  API Key 实时查看剩余 & 已使用Token</div>
+    <div class="sub">输入 API Key，实时查看额度、输入输出 Token，以及缓存读 / 缓存写明细</div>
 
     <label for="apiKey">API Key (Bearer Token)</label>
-    <input type="password" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value="">
+    <div class="row">
+        <input type="password" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+        <button id="queryBtn">✨ 查询用量</button>
+    </div>
 
-    <button id="queryBtn">✨ 查询用量</button>
+    <div id="resultArea"></div>
 
-    <div id="resultArea" class="result-box"></div>
-    
+    <footer>
+        数据来源：tdyun.ai 用量接口 / 日志接口 &nbsp;·&nbsp; Key 仅在你浏览器里直连网关，不会被本站记录或上传<br>
+        额度换算：500,000 quota = $1 USD
+    </footer>
 </div>
 
 <script>
-    const queryBtn = document.getElementById('queryBtn');
-    const apiKeyInput = document.getElementById('apiKey');
-    const resultArea = document.getElementById('resultArea');
+(function () {
+    'use strict';
 
-    // 显示结果（支持HTML或纯文本错误）
-    function showResult(content, isError = false) {
-        resultArea.classList.add('show');
-        resultArea.innerHTML = content;
-        if (isError) {
-            resultArea.classList.add('error');
-        } else {
-            resultArea.classList.remove('error');
-        }
+    var QUOTA_PER_UNIT = 500000;
+    var API_USAGE = 'https://tdyun.ai/api/usage/token/';
+    var API_LOG = 'https://tdyun.ai/api/log/token';
+
+    var queryBtn = document.getElementById('queryBtn');
+    var apiKeyInput = document.getElementById('apiKey');
+    var resultArea = document.getElementById('resultArea');
+
+    var COLORS = { uncached: '#667eea', read: '#1f9d63', write: '#e8940f', out: '#d4537e' };
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function n0(v) { var x = Number(v); return isFinite(x) ? x : 0; }
+    function fmt(v) { return n0(v).toLocaleString('en-US'); }
+    function usd(v) { return '$' + (n0(v) / QUOTA_PER_UNIT).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+    function pct(a, b) { return b > 0 ? (a / b * 100) : 0; }
+    function fmtPct(v) { return (Number(v) || 0).toFixed(1) + '%'; }
+    function fmtTime(sec) {
+        if (!sec) return '—';
+        var d = new Date(sec * 1000);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleString('zh-CN', { hour12: false });
+    }
+    function dayOf(sec) {
+        var d = new Date(sec * 1000);
+        var p = function (x) { return (x < 10 ? '0' : '') + x; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function parseOther(raw) {
+        if (!raw) return {};
+        if (typeof raw === 'object') return raw;
+        try { return JSON.parse(raw); } catch (e) { return {}; }
     }
 
-    // 清除结果内容
-    function clearResult() {
-        resultArea.classList.remove('show');
-        resultArea.innerHTML = '';
+    function fetchJson(url, key) {
+        return fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + key, 'Accept': 'application/json' }
+        }).then(function (res) {
+            return res.text().then(function (text) {
+                var json = null;
+                try { json = JSON.parse(text); } catch (e) {}
+                if (!res.ok) {
+                    var msg = (json && (json.message || json.error)) || ('HTTP ' + res.status);
+                    if (res.status === 401 || res.status === 403 || /Unauthorized|invalid/i.test(String(msg))) {
+                        msg = 'API Key 无效或没有权限（' + msg + '）';
+                    }
+                    throw new Error(msg);
+                }
+                if (!json) throw new Error('返回内容不是合法 JSON');
+                return json;
+            });
+        });
     }
 
-    // 渲染用量数据（适配你提供的返回结构）
-    function renderUsage(data) {
-        // 根据你的curl返回: {"code":true,"data":{ ... },"message":"ok"}
-        if (data.code !== true) {
-            throw new Error(data.message || 'API 返回错误状态');
+    /* ---------- 账户额度（/api/usage/token/） ---------- */
+
+    function renderAccount(data) {
+        var unlimited = !!data.unlimited_quota;
+        var used = n0(data.total_used);
+        var avail = n0(data.total_available);
+        var granted = n0(data.total_granted);
+
+        var availText = (unlimited && avail < 0) ? fmt(avail) + ' (可超额)' : fmt(avail);
+
+        var extra = '';
+        if (data.model_limits_enabled && data.model_limits && Object.keys(data.model_limits).length) {
+            extra = '<div class="stat"><span class="stat-label">📌 模型限制</span>' +
+                    '<span class="stat-value">' + esc(JSON.stringify(data.model_limits)) + '</span></div>';
         }
 
-        const usage = data.data;
-        // 关键字段：
-        // total_used         : 已使用的token数
-        // total_available    : 剩余可用token（可能为负数，表示超额）
-        // total_granted      : 授予总量
-        // unlimited_quota    : 是否无限配额
-        const used = usage.total_used;
-        let remaining = usage.total_available;
-        const unlimited = usage.unlimited_quota;
-        const granted = usage.total_granted;
+        return '' +
+            '<div class="block">' +
+              '<div class="block-title">🎫 账户额度</div>' +
+              '<p class="block-note">来自 <code>/api/usage/token/</code>。注意：<b>total_used 是累计计费额度（quota），不是 token 个数</b>；该接口不返回 token 明细。</p>' +
+              '<div class="stat-list">' +
+                '<div class="stat"><span class="stat-label">📈 已用额度 (quota)</span><span class="stat-value">' + fmt(used) + ' &nbsp;≈&nbsp; ' + usd(used) + '</span></div>' +
+                '<div class="stat"><span class="stat-label">🎟️ 剩余可用额度</span><span class="stat-value">' + availText + '</span></div>' +
+                '<div class="stat"><span class="stat-label">🏷️ 授予总量</span><span class="stat-value">' + fmt(granted) + '</span></div>' +
+                '<div class="stat"><span class="stat-label">⚡ 无限配额</span><span class="stat-value">' + (unlimited ? '是 ✅' : '否 ❌') + '</span></div>' +
+                extra +
+                '<div class="stat"><span class="stat-label">⏱️ 过期时间</span><span class="stat-value">' + (n0(data.expires_at) === 0 ? '永不过期' : esc(fmtTime(data.expires_at))) + '</span></div>' +
+              '</div>' +
+            '</div>';
+    }
 
-        // 格式化数字（带千分位）
-        const formatNum = (num) => Number(num).toLocaleString();
+    /* ---------- Token 用量（/api/log/token） ---------- */
 
-        // 处理剩余显示逻辑：如果unlimited_quota为true 且 remaining为负，显示“无限 (可超额)”
-        let remainingDisplay = '';
-        if (unlimited && remaining < 0) {
-            remainingDisplay = `♾️ 无限 (当前可用 ${formatNum(remaining)}，已超额使用)`;
-        } else if (unlimited) {
-            remainingDisplay = `♾️ 无限 (剩余 ${formatNum(remaining)})`;
-        } else {
-            remainingDisplay = formatNum(remaining);
+    function emptyBucket() { return { n: 0, uncached: 0, read: 0, write: 0, out: 0, quota: 0 }; }
+    function addInto(b, r) {
+        b.n += 1;
+        b.uncached += r.uncached; b.read += r.read; b.write += r.write;
+        b.out += r.out; b.quota += r.quota;
+        return b;
+    }
+    function hitRate(b) {
+        var d = b.read + b.uncached;
+        return d > 0 ? (b.read / d * 100) : 0;
+    }
+    function hitTag(b) {
+        var h = hitRate(b);
+        var cls = h >= 80 ? 'good' : (h >= 50 ? 'warn' : 'bad');
+        return '<span class="tag ' + cls + '">' + fmtPct(h) + '</span>';
+    }
+
+    // 单行缓存计费（quota 单位）；缓存写入按 5 分钟 / 1 小时分档计价
+    function cacheCostQuota(o, mr) {
+        var readQuota = n0(o.cache_tokens) * mr * n0(o.cache_ratio);
+        var has5 = (o.cache_creation_tokens_5m != null);
+        var has1 = (o.cache_creation_tokens_1h != null);
+        if (has5 || has1) {
+            var r5 = n0(o.cache_creation_ratio_5m != null ? o.cache_creation_ratio_5m : o.cache_creation_ratio) || 1.25;
+            var r1 = n0(o.cache_creation_ratio_1h != null ? o.cache_creation_ratio_1h : 2) || 2;
+            return readQuota + n0(o.cache_creation_tokens_5m) * mr * r5 + n0(o.cache_creation_tokens_1h) * mr * r1;
+        }
+        return readQuota + n0(o.cache_creation_tokens) * mr * n0(o.cache_creation_ratio);
+    }
+
+    function parseLogs(logs) {
+        var rows = [], totals = emptyBucket(), errCount = 0;
+        var byModel = {}, byDay = {}, byGroup = {};
+        var hasCacheField = false, saveQuota = 0, saveRows = 0, fixedPriceRows = 0;
+        var tMin = Infinity, tMax = -Infinity;
+
+        for (var i = 0; i < logs.length; i++) {
+            var d = logs[i] || {};
+            var ts = n0(d.created_at);
+            var type = n0(d.type);
+            if (type !== 2) { if (type === 5) errCount += 1; continue; }
+
+            var o = parseOther(d.other);
+            var read = n0(o.cache_tokens);
+            var split = (o.cache_creation_tokens_5m != null || o.cache_creation_tokens_1h != null);
+            var write = split
+                ? (n0(o.cache_creation_tokens_5m) + n0(o.cache_creation_tokens_1h))
+                : n0(o.cache_creation_tokens);
+            if (o.cache_tokens != null || o.cache_creation_tokens != null) hasCacheField = true;
+
+            var r = {
+                ts: ts,
+                day: ts ? dayOf(ts) : '未知',
+                model: d.model_name || '未知',
+                group: d.group || '(空)',
+                type: type,
+                uncached: n0(d.prompt_tokens),
+                read: read,
+                write: write,
+                out: n0(d.completion_tokens),
+                quota: n0(d.quota),
+                requestId: d.request_id || ''
+            };
+            rows.push(r);
+            if (ts) { if (ts < tMin) tMin = ts; if (ts > tMax) tMax = ts; }
+
+            addInto(totals, r);
+            addInto(byModel[r.model] || (byModel[r.model] = emptyBucket()), r);
+            addInto(byDay[r.day] || (byDay[r.day] = emptyBucket()), r);
+            addInto(byGroup[r.group] || (byGroup[r.group] = emptyBucket()), r);
+
+            // 缓存净节省 = 这些 token 按未缓存全价计费 - 实际缓存计费
+            var mr = n0(o.model_ratio);
+            if (mr > 0) {
+                var gr = n0(o.group_ratio) || 1;
+                var costFull = (read + write) * mr * gr;
+                var costCache = cacheCostQuota(o, mr) * gr;
+                saveQuota += (costFull - costCache);
+                saveRows += 1;
+            } else {
+                fixedPriceRows += 1;
+            }
         }
 
-        // 附加额外信息（展示模型限制等，可选）
-        let extraHtml = '';
-        if (usage.model_limits_enabled && Object.keys(usage.model_limits).length) {
-            extraHtml = `<div class="stat"><span class="stat-label">📌 模型限制</span><span class="stat-value">${JSON.stringify(usage.model_limits)}</span></div>`;
+        return {
+            rows: rows, totals: totals, errCount: errCount,
+            byModel: byModel, byDay: byDay, byGroup: byGroup,
+            hasCacheField: hasCacheField, saveQuota: saveQuota,
+            saveRows: saveRows, fixedPriceRows: fixedPriceRows,
+            tMin: isFinite(tMin) ? tMin : 0, tMax: tMax > 0 ? tMax : 0
+        };
+    }
+
+    function barHtml(totals) {
+        var all = totals.uncached + totals.read + totals.write + totals.out;
+        if (all <= 0) return '';
+        var seg = function (v, c) {
+            var w = v / all * 100;
+            return w > 0 ? '<div style="width:' + w.toFixed(3) + '%;background:' + c + '" title="' + fmt(v) + '"></div>' : '';
+        };
+        var legend = [
+            ['未缓存输入', totals.uncached, COLORS.uncached],
+            ['缓存读', totals.read, COLORS.read],
+            ['缓存写', totals.write, COLORS.write],
+            ['输出', totals.out, COLORS.out]
+        ].map(function (x) {
+            return '<span><i style="background:' + x[2] + '"></i>' + x[0] + ' ' + fmt(x[1]) +
+                   ' <span style="color:#98a2b3">(' + fmtPct(pct(x[1], all)) + ')</span></span>';
+        }).join('');
+
+        return '<div class="bar">' +
+                 seg(totals.uncached, COLORS.uncached) + seg(totals.read, COLORS.read) +
+                 seg(totals.write, COLORS.write) + seg(totals.out, COLORS.out) +
+               '</div><div class="legend">' + legend + '</div>';
+    }
+
+    function renderTokens(s) {
+        var t = s.totals;
+        var totalIn = t.uncached + t.read + t.write;
+        var all = totalIn + t.out;
+
+        var html = '' +
+            '<div class="block">' +
+              '<div class="block-title">📊 Token 用量明细</div>' +
+              '<p class="block-note">来自 <code>/api/log/token</code>，覆盖该 Key 名下全部 ' + fmt(s.rows.length + s.errCount) +
+              ' 条日志（计费 ' + fmt(t.n) + ' 条，错误 ' + fmt(s.errCount) + ' 条不计费）' +
+              (s.tMin ? '，时间范围 ' + esc(fmtTime(s.tMin)) + ' ~ ' + esc(fmtTime(s.tMax)) : '') + '。</p>';
+
+        if (t.n === 0) {
+            return html + '<div class="error">该 Key 下没有计费记录。</div></div>';
         }
 
-        const html = `
-            <div class="stat">
-                <span class="stat-label">📈 已使用 Token</span>
-                <span class="stat-value">${formatNum(used)}</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">🎫 剩余可用 Token</span>
-                <span class="stat-value">${remainingDisplay}</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">🏷️ 授予总量</span>
-                <span class="stat-value">${formatNum(granted)}</span>
-            </div>
-            <div class="stat">
-                <span class="stat-label">⚡ 无限配额</span>
-                <span class="stat-value">${unlimited ? '是 ✅' : '否 ❌'}</span>
-            </div>
-            ${extraHtml}
-            <div class="stat">
-                <span class="stat-label">⏱️ 过期时间</span>
-                <span class="stat-value">${usage.expires_at === 0 ? '永不过期' : new Date(usage.expires_at * 1000).toLocaleString()}</span>
-            </div>
-        `;
+        html += '' +
+              '<div class="metrics">' +
+                '<div class="metric m-blue"><div class="k">未缓存输入 prompt_tokens</div><div class="v">' + fmt(t.uncached) + '</div></div>' +
+                '<div class="metric m-green"><div class="k">缓存读 cache_read</div><div class="v">' + fmt(t.read) + '</div></div>' +
+                '<div class="metric m-amber"><div class="k">缓存写 cache_write</div><div class="v">' + fmt(t.write) + '</div></div>' +
+                '<div class="metric m-pink"><div class="k">输出 completion_tokens</div><div class="v">' + fmt(t.out) + '</div></div>' +
+                '<div class="metric m-gray"><div class="k">输入合计（未缓存+读+写）</div><div class="v">' + fmt(totalIn) + '</div></div>' +
+                '<div class="metric"><div class="k">全部 Token 合计</div><div class="v">' + fmt(all) + '</div></div>' +
+              '</div>' +
+              '<div class="stat-list">' +
+                '<div class="stat"><span class="stat-label">🎯 缓存命中率（读 / (读+未缓存)）</span><span class="stat-value">' + fmtPct(hitRate(t)) + '</span></div>' +
+                '<div class="stat"><span class="stat-label">📥 缓存读占全部输入</span><span class="stat-value">' + fmtPct(pct(t.read, totalIn)) + '</span></div>' +
+                '<div class="stat"><span class="stat-label">💰 本次计费额度</span><span class="stat-value">' + fmt(t.quota) + ' &nbsp;≈&nbsp; ' + usd(t.quota) + '</span></div>';
+
+        if (s.saveRows > 0) {
+            var wouldPay = t.quota + s.saveQuota;
+            html += '<div class="stat"><span class="stat-label">🪙 缓存节省（估算）</span><span class="stat-value">' + fmt(s.saveQuota) +
+                    ' &nbsp;≈&nbsp; ' + usd(s.saveQuota) + ' <span style="font-weight:normal;color:#98a2b3">(' +
+                    (wouldPay > 0 ? fmtPct(pct(s.saveQuota, wouldPay)) : '—') + ')</span></span></div>';
+        }
+        html += '</div>' + barHtml(t);
+
+        if (s.saveRows > 0 || s.fixedPriceRows > 0) {
+            html += '<p class="block-note" style="margin-top:12px">' +
+                    '节省算法：把缓存读 / 缓存写的 token 按「未缓存全价」重算一遍，再与实际缓存计费相减（缓存写入按 5 分钟 / 1 小时分档，1 小时档为 2 倍价，属溢价，计入负向）。' +
+                    (s.fixedPriceRows > 0 ? ' 另有 ' + fmt(s.fixedPriceRows) + ' 条固定价（model_ratio=0）请求不参与估算。' : '') +
+                    '</p>';
+        }
+
+        html += '<div class="block">' +
+                '<div class="block-title" style="font-size:15px">🧩 按模型</div>' +
+                '<div class="table-wrap"><table><thead><tr>' +
+                '<th>模型</th><th>次数</th><th>未缓存输入</th><th>缓存读</th><th>缓存写</th><th>输出</th><th>命中率</th>' +
+                '</tr></thead><tbody>';
+        Object.keys(s.byModel).sort(function (a, b) {
+            var A = s.byModel[a], B = s.byModel[b];
+            return (B.uncached + B.read + B.write + B.out) - (A.uncached + A.read + A.write + A.out);
+        }).forEach(function (m) {
+            var b = s.byModel[m];
+            html += '<tr><td>' + esc(m) + '</td><td class="num">' + fmt(b.n) + '</td><td class="num">' + fmt(b.uncached) +
+                    '</td><td class="num">' + fmt(b.read) + '</td><td class="num">' + fmt(b.write) +
+                    '</td><td class="num">' + fmt(b.out) + '</td><td>' + hitTag(b) + '</td></tr>';
+        });
+        html += '</tbody></table></div></div>';
+
+        var groups = Object.keys(s.byGroup);
+        if (groups.length > 1) {
+            html += '<div class="block"><div class="block-title" style="font-size:15px">🔀 按渠道分组</div>' +
+                    '<div class="table-wrap"><table><thead><tr>' +
+                    '<th>渠道</th><th>次数</th><th>未缓存输入</th><th>缓存读</th><th>缓存写</th><th>输出</th><th>命中率</th>' +
+                    '</tr></thead><tbody>';
+            groups.sort(function (a, b) {
+                var A = s.byGroup[a], B = s.byGroup[b];
+                return (B.uncached + B.read + B.write + B.out) - (A.uncached + A.read + A.write + A.out);
+            }).forEach(function (g) {
+                var b = s.byGroup[g];
+                html += '<tr><td>' + esc(g) + '</td><td class="num">' + fmt(b.n) + '</td><td class="num">' + fmt(b.uncached) +
+                        '</td><td class="num">' + fmt(b.read) + '</td><td class="num">' + fmt(b.write) +
+                        '</td><td class="num">' + fmt(b.out) + '</td><td>' + hitTag(b) + '</td></tr>';
+            });
+            html += '</tbody></table></div></div>';
+        }
+
+        var days = Object.keys(s.byDay).sort().reverse();
+        html += '<div class="block"><details><summary>📅 按天明细（' + days.length + ' 天，点击展开）</summary>' +
+                '<div class="table-wrap" style="margin-top:8px"><table><thead><tr>' +
+                '<th>日期</th><th>次数</th><th>未缓存输入</th><th>缓存读</th><th>缓存写</th><th>输出</th><th>命中率</th>' +
+                '</tr></thead><tbody>';
+        days.forEach(function (d) {
+            var b = s.byDay[d];
+            html += '<tr><td>' + esc(d) + '</td><td class="num">' + fmt(b.n) + '</td><td class="num">' + fmt(b.uncached) +
+                    '</td><td class="num">' + fmt(b.read) + '</td><td class="num">' + fmt(b.write) +
+                    '</td><td class="num">' + fmt(b.out) + '</td><td>' + hitTag(b) + '</td></tr>';
+        });
+        html += '</tbody></table></div></details></div>';
+
+        html += '<div class="row"><button class="ghost" id="csvBtn">⬇️ 导出明细 CSV</button>' +
+                '<button class="ghost" id="copyBtn">📋 复制文本摘要</button></div></div>';
         return html;
     }
 
-    queryBtn.addEventListener('click', async () => {
-        const apiKey = apiKeyInput.value.trim();
-        if (!apiKey) {
-            showResult('❌ 请输入你的 API Key', true);
+    function summaryText(s) {
+        var t = s.totals;
+        var totalIn = t.uncached + t.read + t.write;
+        var L = [];
+        L.push('Token 用量统计');
+        L.push('计费请求: ' + fmt(t.n) + ' 条，错误: ' + fmt(s.errCount) + ' 条');
+        if (s.tMin) L.push('时间范围: ' + fmtTime(s.tMin) + ' ~ ' + fmtTime(s.tMax));
+        L.push('');
+        L.push('未缓存输入: ' + fmt(t.uncached));
+        L.push('缓存读    : ' + fmt(t.read));
+        L.push('缓存写    : ' + fmt(t.write));
+        L.push('输出      : ' + fmt(t.out));
+        L.push('输入合计  : ' + fmt(totalIn));
+        L.push('全部 Token: ' + fmt(totalIn + t.out));
+        L.push('缓存命中率: ' + fmtPct(hitRate(t)));
+        L.push('计费额度  : ' + fmt(t.quota) + ' ≈ ' + usd(t.quota));
+        if (s.saveRows > 0) L.push('缓存节省  : ' + fmt(s.saveQuota) + ' ≈ ' + usd(s.saveQuota) + '（估算）');
+        return L.join('\n');
+    }
+
+    function downloadCsv(s) {
+        var head = ['时间', '模型', '渠道', '未缓存输入', '缓存读', '缓存写', '输出', 'quota', 'request_id'];
+        var lines = [head.join(',')];
+        s.rows.slice().sort(function (a, b) { return a.ts - b.ts; }).forEach(function (r) {
+            lines.push([fmtTime(r.ts), r.model, r.group, r.uncached, r.read, r.write, r.out, r.quota, r.requestId]
+                .map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','));
+        });
+        var blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'token_usage_' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    }
+
+    function fallbackCopy(text) {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
+
+    function bindActions(s) {
+        var csvBtn = document.getElementById('csvBtn');
+        if (csvBtn) csvBtn.addEventListener('click', function () { downloadCsv(s); });
+        var copyBtn = document.getElementById('copyBtn');
+        if (copyBtn) copyBtn.addEventListener('click', function () {
+            var text = summaryText(s);
+            var done = function () {
+                copyBtn.textContent = '✅ 已复制';
+                setTimeout(function () { copyBtn.textContent = '📋 复制文本摘要'; }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+            } else { fallbackCopy(text); done(); }
+        });
+    }
+
+    /* ---------- 主流程 ---------- */
+
+    queryBtn.addEventListener('click', function () {
+        var key = apiKeyInput.value.trim();
+        if (!key) {
+            resultArea.innerHTML = '<div class="block"><div class="error">❌ 请输入你的 API Key</div></div>';
             return;
         }
 
-        // 按钮加载状态
-        const originalText = queryBtn.innerHTML;
+        var originalText = queryBtn.innerHTML;
         queryBtn.disabled = true;
         queryBtn.innerHTML = '<span class="loading-spinner"></span> 查询中...';
+        resultArea.innerHTML = '<div class="block"><p class="block-note">正在请求用量接口与日志接口…</p></div>';
 
-        try {
-            // 直接请求API（注意：如果遇到CORS错误，请看下文解决方案）
-            const response = await fetch('https://tdyun.ai/api/usage/token/', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+        var usageP = fetchJson(API_USAGE, key).then(function (j) {
+            if (j.code !== true) throw new Error(j.message || '用量接口业务错误');
+            return j.data;
+        });
+        var logP = fetchJson(API_LOG, key).then(function (j) {
+            if (j.success === false || j.code === false) throw new Error(j.message || '日志接口业务错误');
+            return j.data || [];
+        });
 
-            if (!response.ok) {
-                let errorMsg = `HTTP ${response.status}`;
-                try {
-                    const errorJson = await response.json();
-                    errorMsg = errorJson.message || errorJson.error || errorMsg;
-                } catch (e) {}
-                throw new Error(errorMsg);
+        Promise.allSettled([usageP, logP]).then(function (res) {
+            var html = '';
+            var usage = res[0].status === 'fulfilled' ? res[0].value : null;
+            var logs = res[1].status === 'fulfilled' ? res[1].value : null;
+
+            if (usage) {
+                html += renderAccount(usage);
+            } else {
+                html += '<div class="block"><div class="block-title">🎫 账户额度</div>' +
+                        '<div class="error">❌ 用量接口查询失败：' + esc((res[0].reason && res[0].reason.message) || res[0].reason) + '</div></div>';
             }
 
-            const json = await response.json();
-            console.log('API返回原始数据:', json);  // 方便调试
-
-            // 检查业务code
-            if (json.code !== true) {
-                throw new Error(json.message || '业务错误，请检查Key或权限');
+            var stats = null;
+            if (logs) {
+                stats = parseLogs(logs);
+                html += renderTokens(stats);
+            } else {
+                var em = (res[1].reason && res[1].reason.message) || String(res[1].reason);
+                html += '<div class="block"><div class="block-title">📊 Token 用量明细</div>' +
+                        '<div class="error">❌ 日志接口查询失败：' + esc(em) + '</div>' +
+                        '<p class="block-note">提示：缓存读 / 缓存写只存在于日志接口。若这里报权限错误，说明该 Key 不能访问 <code>/api/log/token</code>。</p></div>';
             }
 
-            const displayHtml = renderUsage(json);
-            showResult(displayHtml, false);
-
-        } catch (error) {
-            console.error('查询异常:', error);
-            let userMsg = error.message;
-            // 针对常见的跨域错误给出友好提示
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                userMsg = '网络请求失败，可能是CORS跨域限制。请参考下方解决方案使用代理。';
-            }
-            showResult(`❌ 查询失败：${userMsg}`, true);
-        } finally {
+            resultArea.innerHTML = html;
+            if (stats && stats.rows.length) bindActions(stats);
+        }).catch(function (err) {
+            resultArea.innerHTML = '<div class="block"><div class="error">❌ 查询失败：' + esc((err && err.message) || err) + '</div></div>';
+        }).then(function () {
             queryBtn.disabled = false;
             queryBtn.innerHTML = originalText;
-        }
+        });
     });
+
+    apiKeyInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') queryBtn.click();
+    });
+})();
 </script>
 </body>
 </html>
