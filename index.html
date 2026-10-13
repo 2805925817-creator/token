@@ -102,6 +102,9 @@
 
         .error { color: #dc3545; background: #ffe6e6; border-left: 4px solid #dc3545;
                  border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+        .warn { color: #96620a; background: #fdf6e3; border-left: 4px solid #e8940f;
+                border-radius: 12px; padding: 12px 16px; font-size: 13px; line-height: 1.6;
+                margin-bottom: 16px; }
         .loading-spinner {
             display: inline-block; width: 16px; height: 16px;
             border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
@@ -144,6 +147,8 @@
     var QUOTA_PER_UNIT = 500000;
     var API_USAGE = 'https://tdyun.ai/api/usage/token/';
     var API_LOG = 'https://tdyun.ai/api/log/token';
+    // 日志接口忽略分页参数，单次最多返回 1000 条；命中上限说明未覆盖全量
+    var LOG_PAGE_CAP = 1000;
 
     var queryBtn = document.getElementById('queryBtn');
     var apiKeyInput = document.getElementById('apiKey');
@@ -159,6 +164,12 @@
     function n0(v) { var x = Number(v); return isFinite(x) ? x : 0; }
     function fmt(v) { return n0(v).toLocaleString('en-US'); }
     function usd(v) { return '$' + (n0(v) / QUOTA_PER_UNIT).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+    // 单价：quota 花费 / token 数 → 每百万 token 多少美元
+    function perM(quota, tokens) {
+        if (!tokens) return '—';
+        var dollars = n0(quota) / tokens * 1e6 / QUOTA_PER_UNIT;
+        return '$' + dollars.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) + ' / M';
+    }
     function pct(a, b) { return b > 0 ? (a / b * 100) : 0; }
     function fmtPct(v) { return (Number(v) || 0).toFixed(1) + '%'; }
     function fmtTime(sec) {
@@ -348,17 +359,29 @@
                '</div><div class="legend">' + legend + '</div>';
     }
 
-    function renderTokens(s) {
+    function renderTokens(s, usage) {
         var t = s.totals;
         var totalIn = t.uncached + t.read + t.write;
         var all = totalIn + t.out;
+        var fetched = s.rows.length + s.errCount;
+        var capped = fetched >= LOG_PAGE_CAP;
+        var acctQuota = usage ? n0(usage.total_used) : 0;
+        var coverage = acctQuota > 0 ? (t.quota / acctQuota * 100) : null;
 
         var html = '' +
             '<div class="block">' +
               '<div class="block-title">📊 Token 用量明细</div>' +
-              '<p class="block-note">来自 <code>/api/log/token</code>，覆盖该 Key 名下全部 ' + fmt(s.rows.length + s.errCount) +
+              '<p class="block-note">来自 <code>/api/log/token</code>，本次取回 ' + fmt(fetched) +
               ' 条日志（计费 ' + fmt(t.n) + ' 条，错误 ' + fmt(s.errCount) + ' 条不计费）' +
               (s.tMin ? '，时间范围 ' + esc(fmtTime(s.tMin)) + ' ~ ' + esc(fmtTime(s.tMax)) : '') + '。</p>';
+
+        if (capped) {
+            html += '<div class="warn">⚠️ 本次取回条数已达该接口单次上限 ' + fmt(LOG_PAGE_CAP) +
+                    ' 条，<b>以下统计只覆盖最近 ' + fmt(LOG_PAGE_CAP) +
+                    ' 条请求，不是该 Key 的全量历史</b>。接口忽略分页参数，拿不到更早的记录。' +
+                    (coverage !== null ? '按额度估算，本次覆盖约 ' + fmtPct(coverage) + '。' : '') +
+                    '</div>';
+        }
 
         if (t.n === 0) {
             return html + '<div class="error">该 Key 下没有计费记录。</div></div>';
@@ -377,6 +400,17 @@
                 '<div class="stat"><span class="stat-label">🎯 缓存命中率（读 / (读+未缓存)）</span><span class="stat-value">' + fmtPct(hitRate(t)) + '</span></div>' +
                 '<div class="stat"><span class="stat-label">📥 缓存读占全部输入</span><span class="stat-value">' + fmtPct(pct(t.read, totalIn)) + '</span></div>' +
                 '<div class="stat"><span class="stat-label">💰 本次计费额度</span><span class="stat-value">' + fmt(t.quota) + ' &nbsp;≈&nbsp; ' + usd(t.quota) + '</span></div>';
+
+        if (coverage !== null) {
+            html += '<div class="stat"><span class="stat-label">📐 占账户累计已用额度</span><span class="stat-value">' +
+                    fmtPct(coverage) + ' <span style="font-weight:normal;color:#98a2b3">(' + usd(t.quota) + ' / ' + usd(acctQuota) + ')</span></span></div>';
+        }
+        html += '<div class="stat"><span class="stat-label">📊 综合单价（全部 token）</span><span class="stat-value">' +
+                perM(t.quota, all) + ' token</span></div>';
+        if (t.read + t.write > 0) {
+            html += '<div class="stat"><span class="stat-label">📊 剔除缓存读后的单价</span><span class="stat-value">' +
+                    perM(t.quota, t.uncached + t.write + t.out) + ' token</span></div>';
+        }
 
         if (s.saveRows > 0) {
             var wouldPay = t.quota + s.saveQuota;
@@ -543,7 +577,7 @@
             var stats = null;
             if (logs) {
                 stats = parseLogs(logs);
-                html += renderTokens(stats);
+                html += renderTokens(stats, usage);
             } else {
                 var em = (res[1].reason && res[1].reason.message) || String(res[1].reason);
                 html += '<div class="block"><div class="block-title">📊 Token 用量明细</div>' +
